@@ -17,7 +17,7 @@ class WebappTask(Task):
 
 
 class DeployWebappTask(WebappTask):
-    """ Deploys a Django project from a GIT repository
+    """ Deploys the latest version of a Django project from a GIT repository
     """
     name = "deploy"
     def perform(self):
@@ -25,16 +25,12 @@ class DeployWebappTask(WebappTask):
         self.webapp.switch_branch(self.branch)
         self.webapp.install_requirements()
         self.webapp.install()
-        #webapp.collect_staticfiles()
-        #webapp.fetch_configuration()
-
-class UpdateWebappTask(WebappTask):
-    """ Updates a deployed django project"""
-    name = "update"
-
-    def perform(self):
-        self.webapp.pull_or_clone()
-        self.webapp.switch_branch(self.branch)
+        self.webapp.apply_migrations()
+        self.webapp.collect_staticfiles()
+        self.webapp.trigger_reload()
+        self.webapp.customize_server_configs()
+        self.webapp.deploy_vhost()
+        #TODO: webapp.fetch_configuration()
 
 
 class ConfigureWebappTask(WebappTask):
@@ -44,8 +40,7 @@ class ConfigureWebappTask(WebappTask):
     name = "config"
 
     def perform(self):
-        self.webapp.customize_server_configs()
-        self.webapp.deploy_vhost()
+        pass
 
 class UploadSettingsTask(WebappTask):
     """

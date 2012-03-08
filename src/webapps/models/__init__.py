@@ -11,8 +11,6 @@ class Webapp(object):
         self.repository = repository
         self.project_name = self.extract_project_name(repository)
         self.branch = None
-        #self.copy_server_key(server)
-        #self.install_own_ssh()
 
     @property
     def path(self):
@@ -22,10 +20,18 @@ class Webapp(object):
         project_name, ext = path.splitext(path.basename(repository))
         return project_name
 
-    def prepare_path(self):
-        run("mkdir -p %s/{.ssh,src,server_configs}" % self.path)
-        run("virtualenv %s" % self.path)
+    def prepare_paths(self):
+        self.mkdir([
+            self.get_src_path(),
+            self.get_conf_path(),
+            "%s/.ssh" % self.path,
+            "%s/var/{media,log}" % self.path,
+            ])
         run("chmod -R +rwX %s/.ssh" % self.path)
+        run("virtualenv %s" % self.path)
+
+    def mkdir(self, path):
+        run("mkdir -p %s" % path)
 
     def copy_server_key(self, server):
         with cd("%s/.ssh" % self.path):
@@ -33,12 +39,6 @@ class Webapp(object):
             server_key = self.get_server_key()
             run("cp %s %s" % (source, server_key))
             run("chmod 0600 %s" % server_key)
-
-    def install_own_ssh(self):
-        with cd(self.path):
-            ssh_cmd = 'ssh -i %s -o "StrictHostKeyChecking no" "$@"' % self.server.get_key_path()
-            run("echo '%s' > bin/ssh" % ssh_cmd)
-            run("chmod 0700 bin/ssh")
 
     def get_server_key(self):
         return "%s/.ssh/server_key" % self.path
@@ -58,17 +58,15 @@ class Webapp(object):
 
     def run_git(self, cmd):
         run("git %s" % (cmd) )
-        #run("GIT_SSH=%s/bin/ssh git %s" % (self.path, cmd) )
 
     def install_requirements(self):
         with cd(self.path):
             pip_file = path.join(self.get_src_path(), "requirements.pip")
             with hide("stdout"):
                 virtualenv_run('yes w | pip install -r %s' % pip_file)
-            #virtualenv_run('yes w | pip install --no-download -r %s' % pip_file)
 
     def install(self):
-        self.prepare_path()
+        self.prepare_paths()
         with cd(self.path):
             virtualenv_run("pip install -e %s" % self.get_src_path())
         self.customize_server_configs()
@@ -98,8 +96,8 @@ class Webapp(object):
             source_path = "%s/server_configs/dev/%s.tmpl"
             source_path %= (self.get_src_path(),conf_name)
 
-            target_path = "%s/server_configs/%s"
-            target_path %= (self.path, conf_name)
+            target_path = "%s/%s"
+            target_path %= (self.get_conf_path(), conf_name)
 
             run("cp -f %s %s" % (source_path, target_path))
 
@@ -107,21 +105,32 @@ class Webapp(object):
                 files.sed(target_path, param, value)
 
     def deploy_vhost(self):
-        symlink_cmd = "ln -sf %s/server_configs/apache.conf %s/.conf/%s.conf"
-        symlink_cmd %= (self.path, self.server.root_dir, path.basename(self.path))
+        symlink_cmd = "ln -sf %s/apache.conf %s/.conf/%s.conf"
+        symlink_cmd %= (self.get_conf_path(), self.server.root_dir, path.basename(self.path))
         run(symlink_cmd)
-        run("mkdir -p %s/var/{media,log}" % self.path)
+
+    def trigger_reload(self):
+        run("touch %s/django.wsgi" % self.get_conf_path())
 
     def collect_staticfiles(self):
         with cd(self.path):
-            virtualenv_run("bin/manage.py collectstatic")
+            with hide("stdout"):
+                virtualenv_run("yes yes| bin/manage.py collectstatic")
 
     def fetch_configuration(self):
         pass
 
 
+    def apply_migrations(self):
+        with cd(self.path):
+            virtualenv_run("bin/manage.py migrate")
+
+
     def get_src_path(self):
         return "%s/src/%s" % (self.path, self.project_name)
+
+    def get_conf_path(self):
+        return "%s/conf" % self.path
 
 
 class ServerEnvironment(object):
