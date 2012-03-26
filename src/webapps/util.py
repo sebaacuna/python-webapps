@@ -2,7 +2,7 @@ from fabric.api import *
 
 
 def virtualenv_run(cmd):
-    return run('source bin/activate; %s' % cmd)
+    return run('source bin/activate && %s' % cmd)
 
 
 class SshAgentRunner(object):
