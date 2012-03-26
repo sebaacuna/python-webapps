@@ -33,15 +33,6 @@ class DeployWebappTask(WebappTask):
         #TODO: webapp.fetch_configuration()
 
 
-class ConfigureWebappTask(WebappTask):
-    """
-    Installs server configs
-    """
-    name = "config"
-
-    def perform(self):
-        pass
-
 class UploadSettingsTask(WebappTask):
     """
     Uploads file arguments to local settings directory
@@ -51,6 +42,7 @@ class UploadSettingsTask(WebappTask):
         self.initWebapp(environment_name, install_name)
         for f in args:
             put(f, self.webapp.get_settings_dir("local"))
+        self.webapp.trigger_reload()
 
 class WatchLogTask(WebappTask):
     """
