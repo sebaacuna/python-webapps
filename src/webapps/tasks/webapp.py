@@ -23,6 +23,7 @@ class DeployWebappTask(WebappTask):
     def perform(self):
         self.webapp.pull_or_clone()
         self.webapp.switch_branch(self.branch)
+        self.webapp.prepare_paths()
         self.webapp.install_requirements()
         self.webapp.install()
         self.webapp.apply_migrations()

@@ -21,7 +21,7 @@ class Webapp(object):
         return project_name
 
     def prepare_paths(self):
-        self.mkdir([
+        map(self.mkdir, [
             self.get_src_path(),
             self.get_conf_path(),
             "%s/.ssh" % self.path,
@@ -72,11 +72,22 @@ class Webapp(object):
         self.customize_server_configs()
 
     def init_local_settings(self):
-        local_settings = "%s/settings.py" % self.get_settings_dir("local")
-        dev_settings = "%s/settings.py" % self.get_settings_dir("dev")
-        if not files.exists(local_settings):
-            copy_cmd = "cp %s %s" % (dev_settings, local_settings)
-            run(copy_cmd)
+        local_dir = self.get_settings_dir("local")
+        dev_dir = self.get_settings_dir("dev")
+        settings = [
+            ("%s/settings.py" % local_dir,
+                "%s/settings.py" % dev_dir),
+            ("%s/api_settings.py" % local_dir,
+                "%s/api_settings.py" % dev_dir),
+            ("%s/db_settings.py" % local_dir,
+                "%s/db_settings.py" % dev_dir),
+            ("%s/db_settings_test.py" % local_dir,
+                "%s/db_settings_test.py" % dev_dir)
+        ]
+        for (local_settings, dev_settings) in settings:
+            if not files.exists(local_settings):
+                copy_cmd = "cp %s %s" % (dev_settings, local_settings)
+                run(copy_cmd)
         run("touch %s/__init__.py" % self.get_settings_dir("local"))
 
     def get_settings_dir(self, context):
