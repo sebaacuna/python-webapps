@@ -1,6 +1,9 @@
 # Scripts for database and user creation
+import mysql
+
+
 drivers = {
-    'django.db.backends.mysql': __import__('mysql'),
+    'django.db.backends.mysql': mysql,
     #TODO: postgres 'driver'
     #others
 }

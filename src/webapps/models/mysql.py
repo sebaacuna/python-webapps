@@ -1,14 +1,14 @@
-from fabric.api import task, env
-from helpers import run
+from fabric.api import *
 
 
 @task
-def query(sql, db="", mysql_user='root', mysql_pass=None):
-    mysql_pass = mysql_pass or env.config.MySQL.root_password
+def query(sql, db="", mysql_user='webapps', mysql_pass=None):
+    #mysql_pass = mysql_pass or env.config.MySQL.root_password
 
     if type(sql) is list:
         sql = " ".join(sql)
-    run('mysql --user=%s --password=%s -e "%s" %s' % (mysql_user, mysql_pass, sql, db))
+    #run('mysql --user=%s --password=%s -e "%s" %s' % (mysql_user, mysql_pass, sql, db))
+    run('mysql --user=%s -e "%s" %s' % (mysql_user, sql, db))
 
 
 @task

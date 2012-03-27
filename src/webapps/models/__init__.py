@@ -137,13 +137,16 @@ class Webapp(object):
         """Create db user and database if needed, based on settings file
         """
         try:
-            settings_module = __import__("%s/db_settings.py" % self.get_settings_dir("local"))
+            # show python where to look
+            import sys
+            sys.path.append(self.get_settings_dir("local"))
+            settings_module = __import__("db_settings")
             settings = settings_module.DATABASES['default']
             init_db_selective(settings)
         except ImportError:
-            run("echo DB initialization failed: db_settings not found")
+            print("DB initialization failed: db_settings not found")
         except KeyError:
-            run("echo DB initialization failed: db_settings incomplete")
+            print("DB initialization failed: db_settings incomplete")
 
 
     def apply_migrations(self):

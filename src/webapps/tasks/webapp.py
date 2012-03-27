@@ -26,6 +26,7 @@ class DeployWebappTask(WebappTask):
         self.webapp.prepare_paths()
         self.webapp.install_requirements()
         self.webapp.install()
+        self.webapp.init_db()
         self.webapp.apply_migrations()
         self.webapp.collect_staticfiles()
         self.webapp.trigger_reload()
