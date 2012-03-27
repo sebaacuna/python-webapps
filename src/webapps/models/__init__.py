@@ -151,7 +151,7 @@ class Webapp(object):
 
     def apply_migrations(self):
         with cd(self.path):
-            virtualenv_run("bin/manage.py migrate")
+            virtualenv_run("bin/manage.py syncdb --migrate")
 
 
     def get_src_path(self):

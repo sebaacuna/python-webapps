@@ -8,7 +8,7 @@ def query(sql, db="", mysql_user='webapps', mysql_pass=None):
     if type(sql) is list:
         sql = " ".join(sql)
     #run('mysql --user=%s --password=%s -e "%s" %s' % (mysql_user, mysql_pass, sql, db))
-    run('mysql --user=%s -e "%s" %s' % (mysql_user, sql, db))
+    run('mysql --user=%s -e "%s" %s || echo blah' % (mysql_user, sql, db))
 
 
 @task
