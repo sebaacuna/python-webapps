@@ -88,7 +88,7 @@ class Webapp(object):
             if not files.exists(local_settings):
                 copy_cmd = "cp %s %s" % (dev_settings, local_settings)
                 run(copy_cmd)
-        run("touch %s/__init__.py" % self.get_settings_dir("local"))
+        run("touch %s/__init__.py" % local_dir)
 
     def get_settings_dir(self, context):
         path = "%s/%s/conf/%s"
