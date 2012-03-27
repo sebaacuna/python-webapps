@@ -2,6 +2,7 @@ from fabric.api import *
 from fabric.contrib import files
 from os import path
 from ..util import virtualenv_run
+from db_driver import init_db_selective
 
 
 class Webapp(object):
@@ -130,6 +131,19 @@ class Webapp(object):
 
     def fetch_configuration(self):
         pass
+
+
+    def init_db(self):
+        """Create db user and database if needed, based on settings file
+        """
+        try:
+            settings_module = __import__("%s/db_settings.py" % self.get_settings_dir("local"))
+            settings = settings_module.DATABASES['default']
+            init_db_selective(settings)
+        except ImportError:
+            run("echo DB initialization failed: db_settings not found")
+        except KeyError:
+            run("echo DB initialization failed: db_settings incomplete")
 
 
     def apply_migrations(self):
