@@ -1,0 +1,22 @@
+<VirtualHost *:80>
+    ServerName SERVER_NAME
+    ServerAdmin admin@unholster.com
+
+    ErrorLog WEBAPP_PATH/var/log/webapp.log
+
+    WSGIDaemonProcess WEBAPP_NAME user=www-data inactivity-timeout=600
+    WSGIProcessGroup WEBAPP_NAME
+    WSGIScriptAlias / WEBAPP_PATH/conf/django.wsgi
+
+    Alias /static/ WEBAPP_PATH/var/static/
+    <Directory /static>
+        Order deny,allow
+        Allow from all
+    </Directory>
+
+    Alias /media/ WEBAPP_PATH/var/media/
+    <Directory /media>
+        Order deny,allow
+        Allow from all
+    </Directory>
+</VirtualHost>

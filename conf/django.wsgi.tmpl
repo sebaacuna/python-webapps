@@ -1,0 +1,14 @@
+import os, sys
+import site
+
+root_dir = 'WEBAPP_PATH'
+
+site.addsitedir('%s/lib/python%d.%d/site-packages' % (root_dir, sys.version_info[0], sys.version_info[1]))
+sys.stdout = sys.stderr
+
+os.environ['DJANGO_SETTINGS_MODULE'] = 'WEBAPP_NAME.conf.local.settings'
+os.environ['PYTHON_EGG_CACHE'] = '%s/var/eggs' % root_dir
+
+import django.core.handlers.wsgi
+
+application = django.core.handlers.wsgi.WSGIHandler()
