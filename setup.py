@@ -2,9 +2,9 @@
 from setuptools import setup, find_packages
 
 setup(name='webapps',
-      version='0.1',
+      version='0.2',
       packages=find_packages(),
-      #package_data={'webapps': '*.*' },
+      package_data={'webapps': 'conf/*.*' },
       exclude_package_data={'webapps': ['bin/*.pyc']},
       #scripts=['bookie/bin/manage.py']
       )
