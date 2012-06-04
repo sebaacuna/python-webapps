@@ -104,8 +104,7 @@ class Webapp(object):
             }
 
         for conf_name in [ 'apache.conf', 'django.wsgi' ]:
-            #TODO: The hardcoded /dev/ below is ugly
-            source_path = "%s/server_configs/dev/%s.tmpl"
+            source_path = "%s/conf/%s.tmpl"
             source_path %= (self.get_src_path(),conf_name)
 
             target_path = "%s/%s"
