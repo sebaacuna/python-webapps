@@ -1,19 +1,22 @@
 from fabric.tasks import Task
+from fabric.decorators import task
 from fabric.api import env, put, run
 from ..models import Webapp, ServerEnvironment
 
+def getWebapp(branch=None):
+    server = ServerEnvironment(env.webapps_root)
+    return Webapp(server, env.app_name, env.repository, branch)
 
 class WebappTask(Task):
     branch = None
 
-    def run(self, environment_name, install_name, branch=None):
+    def run(self, branch=None):
         self.branch = branch
-        self.initWebapp(environment_name, install_name)
+        self.initWebapp()
         self.perform()
 
-    def initWebapp(self, environment_name, install_name):
-        server = ServerEnvironment(env.webapps_root, environment_name)
-        self.webapp = Webapp(server, install_name, env.repository, self.branch)
+    def initWebapp(self):
+        self.webapp = getWebapp(self.branch)
 
 
 class DeployWebappTask(WebappTask):
@@ -23,25 +26,34 @@ class DeployWebappTask(WebappTask):
     def perform(self):
         self.webapp.pull_or_clone()
         self.webapp.switch_branch(self.branch)
+        self.webapp.init_and_update_submodules()
         self.webapp.prepare_paths()
         self.webapp.install_requirements()
         self.webapp.install()
-        self.webapp.init_db()
-        self.webapp.apply_migrations()
-        self.webapp.collect_staticfiles()
-        self.webapp.trigger_reload()
-        self.webapp.customize_server_configs()
-        self.webapp.deploy_vhost()
-        #TODO: webapp.fetch_configuration()
+        self.webapp.migrate_db()
+        #self.webapp.collect_staticfiles()
+        self.webapp.reload_or_launch()
 
+@task
+def site(operation):
+    webapp = getWebapp()
+    webapp.site_operation(operation)
+
+class ConfigTask(WebappTask):
+    """
+    Sets environment config variables
+    """
+    name = "config"
+    def run(self):
+        pass
 
 class UploadSettingsTask(WebappTask):
     """
     Uploads file arguments to local settings directory
     """
     name = "upload_settings"
-    def run(self, environment_name, install_name, *args):
-        self.initWebapp(environment_name, install_name)
+    def run(self, install_name, *args):
+        self.initWebapp()
         for f in args:
             put(f, self.webapp.get_settings_dir("local"))
         self.webapp.trigger_reload()

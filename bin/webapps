@@ -1,0 +1,16 @@
+#! /usr/bin/env python
+import argparse
+
+def test():
+    print "test"
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Webapp management commands",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog = "Available Commands\n  " + "\n  ".join(["test"])
+    )
+    parser.add_argument('command')
+    args = parser.parse_args()
+    
+    globals()[args.command]()

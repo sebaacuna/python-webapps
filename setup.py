@@ -6,5 +6,5 @@ setup(name='webapps',
       packages=find_packages(),
       package_data={'webapps': ['data_files/conf/*.*' ]},
       exclude_package_data={'webapps': ['bin/*.pyc']},
-      #scripts=['bookie/bin/manage.py']
+      scripts=['bin/webapps']
       )

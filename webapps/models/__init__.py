@@ -1,7 +1,6 @@
 from fabric.api import *
 from fabric.contrib import files
 from os import path
-from ..util import virtualenv_run
 from db_driver import init_db_selective
 
 
@@ -15,7 +14,10 @@ class Webapp(object):
 
     @property
     def path(self):
-        return path.join(self.server.root_dir, self.server.name+"."+self.name)
+        return path.join(self.server.root_dir, self.name)
+        
+    def virtualenv_run(self, cmd):
+        return run('source %s/bin/activate && %s' % (self.path, cmd))
 
     def extract_project_name(self, repository):
         project_name, ext = path.splitext(path.basename(repository))
@@ -26,10 +28,11 @@ class Webapp(object):
             self.get_src_path(),
             self.get_conf_path(),
             "%s/.ssh" % self.path,
-            "%s/var/{media,log}" % self.path,
+            "%s/var/log" % self.path,
             ])
         run("chmod -R +rwX %s/.ssh" % self.path)
-        run("virtualenv %s" % self.path)
+        if not files.exists("%s/bin/activate" % self.path):
+            run("virtualenv %s" % self.path)
 
     def mkdir(self, path):
         run("mkdir -p %s" % path)
@@ -50,6 +53,11 @@ class Webapp(object):
                 self.run_git("pull")
         else:
             self.run_git("clone %s %s" % (self.repository, self.get_src_path()) )
+    
+    def init_and_update_submodules(self):
+        with cd(self.get_src_path()):
+            self.run_git("submodule init")
+            self.run_git("submodule update")
 
     def switch_branch(self, branch):
         self.branch = branch
@@ -57,80 +65,15 @@ class Webapp(object):
             with cd(self.get_src_path()):
                 self.run_git("checkout %s" % self.branch)
 
-    def run_git(self, cmd):
-        run("git %s" % (cmd) )
-
     def install_requirements(self):
-        with cd(self.path):
-            pip_file = path.join(self.get_src_path(), "requirements.pip")
+        with cd(self.get_src_path()):
             with hide("stdout"):
-                virtualenv_run('yes w | pip install -r %s' % pip_file)
+                self.virtualenv_run('yes w | pip install -r requirements.txt')
 
     def install(self):
         self.prepare_paths()
         with cd(self.path):
-            virtualenv_run("pip install -e %s" % self.get_src_path())
-        self.customize_server_configs()
-
-    def init_local_settings(self):
-        local_dir = self.get_settings_dir("local")
-        dev_dir = self.get_settings_dir("dev")
-        settings = [
-            ("%s/settings.py" % local_dir,
-                "%s/settings.py" % dev_dir),
-            ("%s/api_settings.py" % local_dir,
-                "%s/api_settings.py" % dev_dir),
-            ("%s/db_settings.py" % local_dir,
-                "%s/db_settings.py" % dev_dir),
-            ("%s/db_settings_test.py" % local_dir,
-                "%s/db_settings_test.py" % dev_dir)
-        ]
-        for (local_settings, dev_settings) in settings:
-            if not files.exists(local_settings):
-                copy_cmd = "cp %s %s" % (dev_settings, local_settings)
-                run(copy_cmd)
-        run("touch %s/__init__.py" % local_dir)
-
-    def get_settings_dir(self, context):
-        path = "%s/%s/conf/%s"
-        return path % (self.get_src_path(), self.name, context)
-
-    def customize_server_configs(self):
-        self.init_local_settings()
-        replacements = {
-                "SERVER_NAME": self.server.name,
-                "WEBAPP_PATH": self.path,
-                "WEBAPP_NAME": self.name,
-            }
-
-        for conf_name in [ 'apache.conf', 'django.wsgi' ]:
-            source_path = "%s/conf/%s.tmpl"
-            source_path %= (self.get_src_path(),conf_name)
-
-            target_path = "%s/%s"
-            target_path %= (self.get_conf_path(), conf_name)
-
-            run("cp -f %s %s" % (source_path, target_path))
-
-            for param, value in replacements.iteritems():
-                files.sed(target_path, param, value)
-
-    def deploy_vhost(self):
-        symlink_cmd = "ln -sf %s/apache.conf %s/.conf/%s.conf"
-        symlink_cmd %= (self.get_conf_path(), self.server.root_dir, path.basename(self.path))
-        run(symlink_cmd)
-
-    def trigger_reload(self):
-        run("touch %s/django.wsgi" % self.get_conf_path())
-
-    def collect_staticfiles(self):
-        with cd(self.path):
-            with hide("stdout"):
-                virtualenv_run("yes yes| bin/manage.py collectstatic")
-
-    def fetch_configuration(self):
-        pass
-
+            self.virtualenv_run("pip install -e %s --force-reinstall" % self.get_src_path())
 
     def init_db(self):
         """Create db user and database if needed, based on settings file
@@ -138,20 +81,52 @@ class Webapp(object):
         try:
             # show python where to look
             import sys
-            sys.path.append(self.get_settings_dir("local"))
-            settings_module = __import__("db_settings")
+            sys.path.append(path.join(self.get_src_path(), self.name))
+            settings_module = __import__("conf.settings")
             settings = settings_module.DATABASES['default']
             init_db_selective(settings)
-        except ImportError:
-            print("DB initialization failed: db_settings not found")
-        except KeyError:
-            print("DB initialization failed: db_settings incomplete")
+        except ImportError, e:
+            print("DB initialization failed: settings not found")
+            raise e
+        except KeyError, e:
+            print("DB initialization failed: settings incomplete")
+            raise e
 
-
-    def apply_migrations(self):
+    def migrate_db(self):
+        self.manage("syncdb --migrate")
+                    
+    def collect_staticfiles(self):
+        with hide("stdout"):
+            self.manage("collectstatic", stdin="yes yes")
+    
+    def reload_or_launch(self):
+        try:
+            self.supervisor("--daemonize")
+        except:
+            pass
+        self.supervisor("reload")
+            
+    def manage(self, command, stdin=None):
+        if stdin is None:
+            stdin = ""
+        else:
+            stdin = stdin + "|"
+            
         with cd(self.path):
-            virtualenv_run("bin/manage.py syncdb --migrate")
+            return self.virtualenv_run("%s bin/manage.py %s" % (stdin, command))
 
+    def run_git(self, cmd):
+        run("git %s" % (cmd) )
+
+    def supervisor(self, command):
+        return self.manage("supervisor --project-dir=bin %s" % command)
+        
+    def site_operation(self, operation):
+        with cd(self.path):
+            self.virtualenv_run("bin/site.py %s" % operation)
+    
+    def fetch_configuration(self):
+        pass
 
     def get_src_path(self):
         return "%s/src/%s" % (self.path, self.project_name)
@@ -161,26 +136,8 @@ class Webapp(object):
 
 
 class ServerEnvironment(object):
-    def __init__(self, root_dir, name):
+    def __init__(self, root_dir):
         self.root_dir = root_dir
-        self.name = name
 
     def install_dependencies(self):
-        #TODO: Install/verify dependencies
-        #       For now, assume all dependencies have been installed
         pass
-
-    def get_key_path(self):
-        return "~/.ssh/%s" % self.get_key_name()
-
-    def get_key_name(self):
-        return "deploy-%s.key" % self.name
-
-    def install_key(self):
-        self.upload_key()
-
-    def upload_key(self):
-        run("mkdir -p ~/.ssh")
-        run("chmod 0700 ~/.ssh")
-        put(self.get_key_name(), self.get_key_path())
-        run("chmod 0600 %s" % self.get_key_path())

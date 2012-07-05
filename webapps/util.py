@@ -1,10 +1,5 @@
 from fabric.api import *
 
-
-def virtualenv_run(cmd):
-    return run('source bin/activate && %s' % cmd)
-
-
 class SshAgentRunner(object):
     """
     Note:: Fabric (and paramiko) can't forward your SSH agent.
