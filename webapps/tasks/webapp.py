@@ -28,3 +28,26 @@ def reload():
 @task 
 def collectstatic():
     webapp.collectstatic()
+    #webapp.make_bucket_public()
+
+@task
+def server_key(keyfile):
+    webapp.upload_server_key(keyfile)
+
+@task
+def server_cert(certfile):
+    webapp.upload_server_cert(certfile)
+    
+@task
+def ssl(mode):
+    webapp.site_operation("ssl %s" % mode)
+
+@task
+def config(*args, **kwargs):
+    if len(args) >0:
+        args = map(lambda x: x[1:], filter(lambda x: x[0] == "-", args))
+        webapp.site_operation("delconfig %s" % " ".join(args))
+    if len(kwargs):
+        keyvals = ["%s=%s" % (key,val) for key,val in kwargs.items()]
+        webapp.site_operation("config %s" % " ".join(keyvals))
+    reload()

@@ -100,3 +100,12 @@ class Webapp(object):
     
     def collectstatic(self):
         self.manage("collectstatic", stdin="yes yes")
+        
+    def make_bucket_pulic(self):
+        self.site_operation("make_bucket_public")
+    
+    def upload_server_key(self, local_key):
+        put(local_key, "%s/server.key" % self.conf_path)
+        
+    def upload_server_cert(self, local_cert):
+        put(local_cert, "%s/server.crt" % self.conf_path)
