@@ -97,7 +97,7 @@ class Webapp(object):
             self.virtualenv_run("pip install -e %s --force-reinstall" % self.src_path)
 
     def migrate_db(self):
-        self.manage("syncdb --migrate --no-input")
+        self.manage("syncdb --migrate --noinput")
     
     def reload_or_launch(self):
         try:
