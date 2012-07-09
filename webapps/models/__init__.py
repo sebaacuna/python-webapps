@@ -72,8 +72,20 @@ class Webapp(object):
             "%s/var/log" % self.path,
             ])
         run("chmod -R +rwX %s/.ssh" % self.path)
+        self.make_virtualenv()
+
+    def make_virtualenv(self):
         if not files.exists("%s/bin/activate" % self.path):
             run("virtualenv %s" % self.path)
+
+            #Symlink these libs for PIL to work
+            if files.exists("/usr/lib/x86_64-linux-gnu/libfreetype.so"):
+                prefix = "/usr/lib/x86_64-linux-gnu"
+            else:
+                prefix = "/usr/lib/i386-linux-gnu"
+                
+            for lib in ['libfreetype', 'libz', 'libjpeg']:
+                run("ln -s %s/%s.so %s/lib/" % (prefix, lib, self.path))
 
     def install_requirements(self):
         with cd(self.src_path):
@@ -85,7 +97,7 @@ class Webapp(object):
             self.virtualenv_run("pip install -e %s --force-reinstall" % self.src_path)
 
     def migrate_db(self):
-        self.manage("syncdb --migrate")
+        self.manage("syncdb --migrate --no-input")
     
     def reload_or_launch(self):
         try:
@@ -96,7 +108,7 @@ class Webapp(object):
         
     def site_operation(self, operation):
         with cd(self.path):
-            self.virtualenv_run("bin/site.py %s" % operation)
+            return self.virtualenv_run("bin/site.py %s" % operation)
     
     def collectstatic(self):
         self.manage("collectstatic", stdin="yes yes")
