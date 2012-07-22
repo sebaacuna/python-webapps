@@ -118,6 +118,7 @@ class Webapp(object):
             return self.virtualenv_run("bin/site.py %s" % operation)
     
     def collectstatic(self):
+        self.site_operation("bundlestatic")
         self.manage("collectstatic", stdin="yes yes")
         
     def make_bucket_pulic(self):
