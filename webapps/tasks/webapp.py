@@ -1,8 +1,9 @@
 from fabric.tasks import Task
 from fabric.decorators import task
-from fabric.api import env, put, run, get, prompt
+from fabric.api import env, put, run, get, prompt, local, lcd
 from fabric.contrib import files
 from ..models import Webapp
+import os
 
 webapp = Webapp(env.app_name, env.repository)
 
@@ -77,3 +78,15 @@ def config(operation=None, local_file=None):
             run("rm %s" % config_path)
         put(local_file, config_path)
         reload()
+        
+@task
+def createsuperuser():
+    webapp.manage("createsuperuser")
+
+@task
+def tail(process="web.0"):
+    webapp.supervisor("tail -100 %s" % process)
+
+@task
+def ps():
+    webapp.supervisor("status")

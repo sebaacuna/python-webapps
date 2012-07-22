@@ -23,6 +23,11 @@ class Webapp(object):
     @property
     def conf_path(self):
         return "%s/conf" % self.path
+    
+    def var_path(self, path):
+        with hide('stdout', 'running'):
+            var_root = self.site_operation("path VAR_ROOT")
+            return "%s/%s" % (var_root, path)
         
     def virtualenv_run(self, cmd):
         return run('source %s/bin/activate && %s' % (self.path, cmd))
@@ -101,9 +106,11 @@ class Webapp(object):
     
     def reload_or_launch(self):
         try:
-            self.supervisor("--daemonize")
+            int(self.supervisor("pid"))
         except:
-            pass
+            # Did not return a pid
+            self.supervisor("--daemonize")
+            
         self.supervisor("reload")
         
     def site_operation(self, operation):
