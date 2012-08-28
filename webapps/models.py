@@ -75,6 +75,7 @@ class Webapp(object):
             self.conf_path,
             "%s/.ssh" % self.path,
             "%s/var/log" % self.path,
+            "%s/html" % self.path,
             ])
         run("chmod -R +rwX %s/.ssh" % self.path)
         self.make_virtualenv()
@@ -112,6 +113,11 @@ class Webapp(object):
             self.supervisor("--daemonize")
             
         self.supervisor("reload")
+    
+    def reinstall(self, package):
+        with cd(self.src_path):
+            self.virtualenv_run('pip install --ignore-installed --no-download %s' % package)
+        self.reload_or_launch()
         
     def site_operation(self, operation):
         with cd(self.path):

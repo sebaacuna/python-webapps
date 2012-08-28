@@ -1,6 +1,6 @@
 from fabric.tasks import Task
 from fabric.decorators import task
-from fabric.api import env, put, run, get, prompt, local, lcd
+from fabric.api import env, put, run, get, prompt, local, lcd, abort
 from fabric.contrib import files
 from ..models import Webapp
 import os
@@ -28,6 +28,11 @@ def site(operation):
 @task
 def reload():
     webapp.reload_or_launch()
+    
+@task
+def reinstall(package):
+    #Force-Reinstalls a dependency
+    webapp.reinstall(package)
     
 @task 
 def collectstatic():
@@ -59,24 +64,22 @@ def param(*args, **kwargs):
         reload()
 
 @task
-def config(operation=None, local_file=None):
-    if operation is None:
+def config(pull=None, push=None):
+    if pull is None and push is None:
         webapp.site_operation("config")
         return
-    elif operation not in ("push", "pull"):
-        raise Exception("Unknown config operation: %s" % operation)
-    elif local_file is None:
-        raise Exception("Local file must be specified in order to %s" % operation)
+    elif pull is not None and push is not None:
+        raise Exception("Choose a single operation")
         
     config_path = str(webapp.site_operation("config_path"))
-    if operation == "pull":
-        get(config_path, local_file)
-    if operation == "push":
+    if pull:
+        get(config_path, pull)
+    if push:
         if files.exists(config_path):
             if "y" != prompt("**WARNING** This will overwrite servers local config. Proceed? [yn]"):
                 return
             run("rm %s" % config_path)
-        put(local_file, config_path)
+        put(push, config_path)
         reload()
         
 @task
@@ -90,3 +93,13 @@ def tail(process="web.0"):
 @task
 def ps():
     webapp.supervisor("status")
+    
+@task
+def maintenance(mode=None):
+    if mode == "on":
+        webapp.supervisor("stop all")
+    elif mode == "off":
+        webapp.supervisor("start all")
+    else:
+        abort("Usage: maintenance:[on|off]")
+        
